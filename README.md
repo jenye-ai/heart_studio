@@ -1,6 +1,9 @@
 # heart_studio
 
-## Reproducing Checkpoint
+## Reproducing Model
+### Download Required Data Files for Training/Testing:
+Please Download Folders "set_a" and "set_b" from: https://www.kaggle.com/kinguistics/heartbeat-sounds/data?select=set_a_timing.csv
+
 ### Create a new virtual environment
 In your desired folder, type the following in your command line:
 >python3 -m venv [ENV_NAME]
