@@ -1,7 +1,16 @@
 # heart_studio
 
-## Reproducing Model
-### Download Required Data Files for Training/Testing:
+## Files
+### hr_analysis.ipynb
+Takes in a .wav file of a heart auscultation and analyzes the signal to find bpm (beats per minute).
+
+### rf_classifier.ipynb/.py
+Trains a random forest classifier for classification of types of heart signals (normal, murmur, artifact) given a set of .wave files.
+
+## Reproducing Results
+Recommended IDE: Jupyter Notebook
+
+### Download Required Data Files:
 Please Download Folders "set_a" and "set_b" from: https://www.kaggle.com/kinguistics/heartbeat-sounds/data?select=set_a_timing.csv
 
 ### Create a new virtual environment
