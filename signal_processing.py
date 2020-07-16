@@ -5,13 +5,14 @@ import scipy.signal as sig
 
 
 def process_sound(filename):
+    # Read the audio file
     sample_rate, audio_data = wavfile.read(filename)
-    channels = audio_data.shape[1]
+    #channels = audio_data.shape[1]
 
     # Stereo to Mono conversion if necessary
-    if channels == 2:
-        audio_data = stereo_to_mono(audio_data)
-        channels = 1
+    #if channels == 2:
+    #    audio_data = stereo_to_mono(audio_data)
+    #    channels = 1
 
     orig_time_duration = audio_data.shape[0] / sample_rate
 
@@ -20,30 +21,33 @@ def process_sound(filename):
         # Fix this, is decimate better?
         sig.resample(audio_data, 16000)
         sample_rate = 16000
+    else:
+        return
 
     # N is the number of channels
     # Interested in frequencies 0 to 1000 Hz
-    # 9 channels with range of 100 kHz
     N = 9
+
+    # Spacing between each channel
     spacing = 100
 
-    lowcut = 0
-    highcut = 100
+    low = 20
+    high = 100
     output_signal = 0
 
     # Loop through each channel
-    for i in range(N):
-        # BANDPASS FILTER BANK
-        signal = butter_bandpass_filter(audio_data, lowcut, highcut, sample_rate, 5)
-        central_freq = (lowcut + highcut)/2
-
+    for i in range(N+1):
         # Increment the lower and upper cutoff frequencies by 100 Hz
-        lowcut = lowcut + spacing
-        highcut = highcut + spacing
+        low = low + i*spacing
+        high = low + spacing
+
+        # BANDPASS FILTER BANK
+        filtered_signal = butter_bandpass_filter(audio_data, low, high, sample_rate, 5)
+        central_freq = (low + high)/2
 
         # ENVELOPE EXTRACTION
         # Rectify the output signal
-        rectified_signal = abs(signal)
+        rectified_signal = abs(filtered_signal)
 
         # Detect envelopes of rectified signals using a lowpass filter
         # What should the cutoff frequency be here?
@@ -55,17 +59,51 @@ def process_sound(filename):
         cos_signal = np.cos(2*np.pi*central_freq*time)
 
         # AMPLITUDE MODULATION
-        # Carrier is cos_signal
-        # Modulator signal is rectified_signal
-        # am_signal =
+        am_signal = np.multiply(envelope, cos_signal)
 
         # Add the amplitude modulated signals for each channel to obtain output signal
-        # output_signal += am_signal
+        output_signal += am_signal
+
+        # Plotting
+        if i == 1:
+            plt.figure()
+            plt.plot(filtered_signal)
+            plt.title("Output Signal of Channel 1")
+        elif i == 2:
+            plt.figure()
+            plt.plot(output_signal)
+            plt.title("Output Signal 1")
+        elif i == N:
+            plt.figure()
+            plt.plot(filtered_signal)
+            plt.title("Output Signal of Channel N")
+
+            plt.figure()
+            plt.plot(rectified_signal)
+            plt.title("Rectified Signal")
+
+            plt.figure()
+            plt.plot(output_signal)
+            plt.title("Output Signal")
+
+    # Normalize the output signal by the max of its absolute value
+    output_signal = output_signal / np.max(output_signal)
+
+    print(envelope)
+    print(cos_signal)
+
+    # Plot the output signal
+    plt.figure()
+    plt.plot(output_signal)
+    plt.title("Output Signal")
+
+    # Show all plots
+    plt.show()
 
     return output_signal
 
 
-def butter_bandpass_filter(data, lowcut, highcut, fs, order = 5):
+def butter_bandpass_filter(data, lowcut, highcut, fs, order):
     # Nyquist frequency
     nyq = 0.5 * fs
 
@@ -86,7 +124,7 @@ def butter_bandpass_filter(data, lowcut, highcut, fs, order = 5):
     return y
 
 
-def butter_lowpass_filter(data, cutoff, fs, order = 5):
+def butter_lowpass_filter(data, cutoff, fs, order):
     # Nyquist frequency
     nyq = 0.5*fs
 
@@ -124,7 +162,14 @@ def stereo_to_mono(audio_data):
 
     for i in range(len(audio_data)):
         # Not sure whether division by 2 is necessary
-        d = audio_data[:,0]/2 + audio_data[:,1]/2
+        d = audio_data[:, 0]/2 + audio_data[:, 1]/2
         new_audio_data.append(d)
 
     return np.array(new_audio_data, dtype = "int16")
+
+
+if __name__ == '__main__':
+    filepath = "C:\\Users\\mavel\\Documents\\BME 261\\Testing Set\\"
+    filename = "test.wav"
+    sound_file = filepath + filename
+    process_sound(sound_file)
