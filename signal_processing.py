@@ -7,7 +7,7 @@ import scipy.signal as sig
 def process_sound(filename):
     # Read the audio file
     sample_rate, audio_data = wavfile.read(filename)
-    #channels = audio_data.shape[1]
+    channels = len(audio_data.shape)
 
     # Stereo to Mono conversion if necessary
     #if channels == 2:
@@ -42,7 +42,7 @@ def process_sound(filename):
         high = low + spacing
 
         # BANDPASS FILTER BANK
-        filtered_signal = butter_bandpass_filter(audio_data, low, high, sample_rate, 5)
+        filtered_signal = butter_bandpass_filter(audio_data, low, high, sample_rate, 4)
         central_freq = (low + high)/2
 
         # ENVELOPE EXTRACTION
@@ -51,7 +51,8 @@ def process_sound(filename):
 
         # Detect envelopes of rectified signals using a lowpass filter
         # What should the cutoff frequency be here?
-        envelope = butter_lowpass_filter(rectified_signal, 400, sample_rate, 5)
+        envelope = butter_lowpass_filter(rectified_signal, 400, sample_rate, 4)
+        envelope = envelope.transpose()
 
         # Generate cos signal with central frequency of bandpass filters and length of rectified signals
         time_duration = rectified_signal.shape[0]/sample_rate
@@ -59,7 +60,7 @@ def process_sound(filename):
         cos_signal = np.cos(2*np.pi*central_freq*time)
 
         # AMPLITUDE MODULATION
-        am_signal = np.multiply(envelope, cos_signal)
+        am_signal = envelope*cos_signal
 
         # Add the amplitude modulated signals for each channel to obtain output signal
         output_signal += am_signal
@@ -69,36 +70,48 @@ def process_sound(filename):
             plt.figure()
             plt.plot(filtered_signal)
             plt.title("Output Signal of Channel 1")
-        elif i == 2:
+            plt.xlabel("Sample Number")
+            plt.ylabel("Amplitude")
+
+            #plt.figure()
+            #b,a = butter_bandpass(low,high,sample_rate, 4)
+            #w, h = sig.freqz(b, a, worN=2000)
+            #plt.plot((sample_rate * 0.5 / np.pi) * w, abs(h), label="order = 5")
+            #plt.xlim([0, 1000])
             plt.figure()
-            plt.plot(output_signal)
-            plt.title("Output Signal 1")
+            plt.plot(envelope)
+            plt.title("Envelope")
+            plt.xlabel("Sample Number")
+            plt.ylabel("Amplitude")
+
         elif i == N:
             plt.figure()
             plt.plot(filtered_signal)
             plt.title("Output Signal of Channel N")
+            plt.xlabel("Sample Number")
+            plt.ylabel("Amplitude")
 
             plt.figure()
-            plt.plot(rectified_signal)
-            plt.title("Rectified Signal")
-
-            plt.figure()
-            plt.plot(output_signal)
-            plt.title("Output Signal")
+            plt.plot(envelope)
+            plt.title("Envelope")
+            plt.xlabel("Sample Number")
+            plt.ylabel("Amplitude")
 
     # Normalize the output signal by the max of its absolute value
-    output_signal = output_signal / np.max(output_signal)
-
-    print(envelope)
-    print(cos_signal)
+    output_signal = output_signal / np.max(abs(output_signal))
 
     # Plot the output signal
     plt.figure()
     plt.plot(output_signal)
     plt.title("Output Signal")
+    plt.xlabel("Sample Number")
+    plt.ylabel("Amplitude")
 
     # Show all plots
     plt.show()
+
+    sound = np.random.uniform(-1, 1, sample_rate)
+    #wavfile.write('test1.wav', sample_rate, sound)
 
     return output_signal
 
@@ -117,7 +130,7 @@ def butter_bandpass_filter(data, lowcut, highcut, fs, order):
     high = highcut / nyq
 
     # Use Butterworth bandpass filter to obtain transfer function coefficients b,a
-    b, a = sig.butter(order, [low, high], btype="band")
+    b, a = sig.butter(order, [low, high], btype='band')
 
     # Obtain filtered signal
     y = sig.lfilter(b, a, data)
@@ -142,6 +155,14 @@ def butter_lowpass_filter(data, cutoff, fs, order):
     # Obtain filtered signal
     y = sig.lfilter(b, a, data)
     return y
+
+
+def butter_bandpass(lowcut, highcut, fs, order=5):
+    nyq = 0.5 * fs
+    low = lowcut / nyq
+    high = highcut / nyq
+    b, a = sig.butter(order, [low, high], btype='band')
+    return b, a
 
 
 # Plot signal and save it as a png (can change this later)
@@ -170,6 +191,6 @@ def stereo_to_mono(audio_data):
 
 if __name__ == '__main__':
     filepath = "C:\\Users\\mavel\\Documents\\BME 261\\Testing Set\\"
-    filename = "test.wav"
+    filename = "fo-4.wav"
     sound_file = filepath + filename
     process_sound(sound_file)
