@@ -2,30 +2,28 @@ from scipy.io import wavfile
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.signal as sig
-
+from sklearn.utils import resample
 
 def process_sound(filename):
     # Read the audio file
     sample_rate, audio_data = wavfile.read(filename)
+    # .shape returns an array of size 1 if there is one channel and an array of size 2 for more than 1 channel
     channels = len(audio_data.shape)
 
-    # Stereo to Mono conversion if necessary
-    #if channels == 2:
-    #    audio_data = stereo_to_mono(audio_data)
-    #    channels = 1
+    # Stereo to Mono conversion
+    if channels == 2:
+       audio_data = stereo_to_mono(audio_data)
+       channels = 1
 
-    orig_time_duration = audio_data.shape[0] / sample_rate
-
-    # Downsample - not sure if the 16000 is significant or arbitrary
+    # Downsampling
     if sample_rate > 16000:
-        # Fix this, is decimate better?
-        sig.resample(audio_data, 16000)
+        sample_factor = 16000/sample_rate
+        audio_data = resample(audio_data, n_samples=(int(audio_data.shape[0]*sample_factor)))
         sample_rate = 16000
     else:
         return
 
-    # N is the number of channels
-    # Interested in frequencies 0 to 1000 Hz
+    # N is the number of channels, interested in frequencies 0 to 1000 Hz
     N = 9
 
     # Spacing between each channel
@@ -35,13 +33,12 @@ def process_sound(filename):
     high = 100
     output_signal = 0
 
-    # Loop through each channel
     for i in range(N+1):
         # Increment the lower and upper cutoff frequencies by 100 Hz
         low = low + i*spacing
         high = low + spacing
 
-        # BANDPASS FILTER BANK
+        # BANDPASS FILTER
         filtered_signal = butter_bandpass_filter(audio_data, low, high, sample_rate, 4)
         central_freq = (low + high)/2
 
@@ -50,7 +47,6 @@ def process_sound(filename):
         rectified_signal = abs(filtered_signal)
 
         # Detect envelopes of rectified signals using a lowpass filter
-        # What should the cutoff frequency be here?
         envelope = butter_lowpass_filter(rectified_signal, 400, sample_rate, 4)
         envelope = envelope.transpose()
 
@@ -65,53 +61,36 @@ def process_sound(filename):
         # Add the amplitude modulated signals for each channel to obtain output signal
         output_signal += am_signal
 
-        # Plotting
-        if i == 1:
-            plt.figure()
-            plt.plot(filtered_signal)
-            plt.title("Output Signal of Channel 1")
-            plt.xlabel("Sample Number")
-            plt.ylabel("Amplitude")
-
-            #plt.figure()
-            #b,a = butter_bandpass(low,high,sample_rate, 4)
-            #w, h = sig.freqz(b, a, worN=2000)
-            #plt.plot((sample_rate * 0.5 / np.pi) * w, abs(h), label="order = 5")
-            #plt.xlim([0, 1000])
-            plt.figure()
-            plt.plot(envelope)
-            plt.title("Envelope")
-            plt.xlabel("Sample Number")
-            plt.ylabel("Amplitude")
-
-        elif i == N:
-            plt.figure()
-            plt.plot(filtered_signal)
-            plt.title("Output Signal of Channel N")
-            plt.xlabel("Sample Number")
-            plt.ylabel("Amplitude")
-
-            plt.figure()
-            plt.plot(envelope)
-            plt.title("Envelope")
-            plt.xlabel("Sample Number")
-            plt.ylabel("Amplitude")
-
     # Normalize the output signal by the max of its absolute value
-    output_signal = output_signal / np.max(abs(output_signal))
+    output_signal_norm = output_signal / np.max(abs(output_signal))
+
+    # Normalize resampled audio by its max
+    audio_data_norm = audio_data / np.max(abs(audio_data))
+    print(rectified_signal.shape[0])
+    print(time)
+
+    # Magnitude of output signal
+    #output_signal_db = 20*np.log10(abs(output_signal))
+    #audio_data_db = 20*np.log10(abs(audio_data))
+
+    #plt.figure()
+    #plt.magnitude_spectrum(audio_data, Fs=sample_rate, scale='dB')
+
+    #plt.figure()
+    #plt.magnitude_spectrum(output_signal, Fs=sample_rate, scale='dB')
 
     # Plot the output signal
-    plt.figure()
-    plt.plot(output_signal)
-    plt.title("Output Signal")
-    plt.xlabel("Sample Number")
-    plt.ylabel("Amplitude")
+    fig, (ax1, ax2) = plt.subplots(2)
+    ax1.plot(time, audio_data_norm)
+    ax1.set_title("Original Audio (Resampled)")
+    ax1.set(xlabel= "Sample Number", ylabel= "Amplitude")
 
-    # Show all plots
+    ax2.plot(time, output_signal_norm)
+    ax2.set_title("Filtered Audio")
+    ax2.set(xlabel="Sample Number", ylabel="Amplitude")
+    fig.tight_layout(pad=2.0)
+
     plt.show()
-
-    sound = np.random.uniform(-1, 1, sample_rate)
-    #wavfile.write('test1.wav', sample_rate, sound)
 
     return output_signal
 
@@ -157,25 +136,6 @@ def butter_lowpass_filter(data, cutoff, fs, order):
     return y
 
 
-def butter_bandpass(lowcut, highcut, fs, order=5):
-    nyq = 0.5 * fs
-    low = lowcut / nyq
-    high = highcut / nyq
-    b, a = sig.butter(order, [low, high], btype='band')
-    return b, a
-
-
-# Plot signal and save it as a png (can change this later)
-# Should plot be saved or
-def plot_signal(audio_data, time_duration):
-    time = np.linspace(0.,time_duration, audio_data.shape[0])
-    plt.plot(time, audio_data)
-    plt.xlabel("Time (s)")
-    plt.ylabel("Amplitude")
-    plt.show()
-    plt.savefig("PCG_plot.png")
-
-
 # Convert stereo sounds to mono
 def stereo_to_mono(audio_data):
     audio_data = audio_data.astype(float)
@@ -191,6 +151,7 @@ def stereo_to_mono(audio_data):
 
 if __name__ == '__main__':
     filepath = "C:\\Users\\mavel\\Documents\\BME 261\\Testing Set\\"
-    filename = "fo-4.wav"
+    filename = "Normal1.wav"
     sound_file = filepath + filename
+    #playsound(sound_file)
     process_sound(sound_file)
