@@ -6,7 +6,7 @@ cycler==0.10.0
 decorator==4.4.2
 et-xmlfile==1.0.1
 ipykernel==5.3.2
-ipython==7.16.1
+ipython==7.16.3
 ipython-genutils==0.2.0
 jdcal==1.4.1
 jedi==0.17.1
